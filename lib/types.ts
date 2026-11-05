@@ -1,4 +1,5 @@
 export type Priority = "hot" | "warm" | "cold";
+export type LeadStatus = "new" | "contacted" | "visit_booked" | "closed";
 
 export interface LeadInput {
   name: string;
@@ -44,6 +45,7 @@ export interface Lead {
   followUps: FollowUp[];
   chat: ChatMessage[];
   emailDraft?: EmailDraft;
+  status?: LeadStatus;
 }
 
 export interface EmailDraft {

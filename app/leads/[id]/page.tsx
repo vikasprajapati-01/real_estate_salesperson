@@ -26,8 +26,9 @@ import ScoreRing from "@/components/ScoreRing";
 import { PRIORITY_STYLE } from "@/components/priority";
 import { btnPrimary, btnSecondary, card, inputClass } from "@/components/ui";
 import { downloadIcs, dueDate } from "@/lib/ics";
-import { getLead, saveLead, deleteLead } from "@/lib/store";
-import type { Lead } from "@/lib/types";
+import { deleteLead, getLead, saveLead } from "@/lib/store";
+import { STATUSES } from "@/lib/status";
+import type { Lead, LeadStatus } from "@/lib/types";
 
 const CHANNEL = {
   call: { label: "Call", Icon: PhoneIcon },
@@ -161,9 +162,23 @@ function LeadDetail() {
           <ChevronLeftIcon className="size-4" />
           All leads
         </Link>
-        <button type="button" onClick={remove} className={`${btnSecondary} h-8 px-3 text-xs text-hot`}>
-          Delete lead
-        </button>
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-2 text-xs font-medium text-muted">
+            Status
+            <select
+              value={lead.status ?? "new"}
+              onChange={(e) => update({ ...lead, status: e.target.value as LeadStatus })}
+              className={`${inputClass} h-8 w-auto py-0 text-xs`}
+            >
+              {STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>{s.label}</option>
+              ))}
+            </select>
+          </label>
+          <button type="button" onClick={remove} className={`${btnSecondary} h-8 px-3 text-xs text-hot`}>
+            Delete lead
+          </button>
+        </div>
       </div>
 
       <section className={`${card} p-5 sm:p-6`}>

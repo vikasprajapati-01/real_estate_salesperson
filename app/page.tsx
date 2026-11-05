@@ -5,10 +5,11 @@ import { useEffect, useState } from "react";
 import { ChevronRightIcon, BellIcon, InboxIcon, MapPinIcon, PlusIcon, SpinnerIcon, WalletIcon, AlertIcon } from "@/components/icons";
 import ScoreRing from "@/components/ScoreRing";
 import { PRIORITY_STYLE } from "@/components/priority";
-import { btnPrimary, btnSecondary, card } from "@/components/ui";
+import { btnPrimary, btnSecondary, card, inputClass } from "@/components/ui";
 import { dueDate } from "@/lib/ics";
 import { clearLeads, getLeads, saveLead } from "@/lib/store";
 import type { Analysis, Lead, LeadInput, Priority } from "@/lib/types";
+import { statusLabel } from "@/lib/status";
 
 const SAMPLES: LeadInput[] = [
   {
@@ -40,11 +41,18 @@ const SAMPLES: LeadInput[] = [
 ];
 
 const PRIORITY_ORDER: Priority[] = ["hot", "warm", "cold"];
+const FILTERS: { value: "all" | Priority; label: string }[] = [
+  { value: "all", label: "All" },
+  { value: "hot", label: "Hot" },
+  { value: "warm", label: "Warm" },
+  { value: "cold", label: "Cold" },
+];
 
 function dueFollowUps(leads: Lead[], now: number) {
   const cutoff = new Date(now);
   cutoff.setHours(23, 59, 59, 999);
   return leads
+    .filter((lead) => lead.status !== "closed")
     .flatMap((lead) =>
       lead.followUps
         .filter((followUp) => !followUp.done && dueDate(lead, followUp.dayOffset).getTime() <= cutoff.getTime())
@@ -93,6 +101,8 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<"all" | Priority>("all");
 
   useEffect(() => {
     setLeads(getLeads());
@@ -128,6 +138,12 @@ export default function HomePage() {
   const due = now === null ? [] : dueFollowUps(leads, now);
   const startOfToday = now === null ? 0 : new Date(now).setHours(0, 0, 0, 0);
   const hotCount = leads.filter((lead) => lead.analysis.priority === "hot").length;
+  const q = query.trim().toLowerCase();
+  const visible = leads.filter((lead) => {
+    if (filter !== "all" && lead.analysis.priority !== filter) return false;
+    if (!q) return true;
+    return [lead.input.name, lead.input.location, lead.input.requirement].some((v) => v.toLowerCase().includes(q));
+  });
 
   let subtitle = "Follow up on what is due, then work the hottest leads first.";
   if (ready && leads.length === 0) subtitle = "Add a lead to get a score and a follow-up plan.";
@@ -200,6 +216,40 @@ export default function HomePage() {
         )}
       </section>
 
+      {ready && leads.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search name, location or requirement"
+            aria-label="Search leads"
+            className={`${inputClass} sm:max-w-xs`}
+          />
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filter by priority">
+            {FILTERS.map((f) => (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setFilter(f.value)}
+                aria-pressed={filter === f.value}
+                className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
+                  filter === f.value
+                    ? "border-primary bg-primary-soft text-primary-ink"
+                    : "border-line bg-surface text-muted hover:border-line-strong"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      {ready && leads.length > 0 && visible.length === 0 ? (
+        <p className="text-sm text-muted">No leads match your search or filter.</p>
+      ) : null}
+
       {!ready ? (
         <div className="grid gap-3 sm:grid-cols-2" aria-hidden="true">
           {[0, 1].map((i) => (
@@ -227,7 +277,7 @@ export default function HomePage() {
         </div>
       ) : (
         PRIORITY_ORDER.map((priority) => {
-          const group = leads.filter((lead) => lead.analysis.priority === priority);
+          const group = visible.filter((lead) => lead.analysis.priority === priority);
           if (group.length === 0) return null;
           const style = PRIORITY_STYLE[priority];
           return (
@@ -242,7 +292,7 @@ export default function HomePage() {
                   <Link
                     key={lead.id}
                     href={`/leads/${lead.id}`}
-                    className={`${card} group flex flex-col gap-3 p-4 transition-colors hover:border-primary`}
+                    className={`${card} group flex flex-col gap-3 p-4 transition-colors hover:border-primary ${lead.status === "closed" ? "opacity-60" : ""}`}
                   >
                     <div className="flex items-start gap-3">
                       <ScoreRing score={lead.analysis.score} priority={priority} size={44} compact />
@@ -258,6 +308,9 @@ export default function HomePage() {
                             {lead.input.budget || "No budget"}
                           </span>
                         </p>
+                        <span className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${lead.status === "closed" ? "bg-sunken text-muted" : "bg-primary-soft text-primary-ink"}`}>
+                          {statusLabel(lead.status)}
+                        </span>
                       </div>
                       <ChevronRightIcon className="mt-1 size-4 shrink-0 text-muted group-hover:text-primary-ink" />
                     </div>
