@@ -88,6 +88,14 @@ Open http://localhost:3000.
 
 Deployed on Vercel (free plan) with the same three variables.
 
+## Known limitations
+
+- Leads are saved in the browser, so they don't sync across devices or people.
+- Leads are entered by hand; there is no automatic intake yet.
+- Follow-ups show up when you open the app and in the calendar file. The app doesn't send reminders.
+- Scores come from an AI model, so the same lead can score a point higher or lower on a re-run.
+- The rate limit is per server instance, so it stops casual misuse, not a determined one.
+
 ## What I would build next
 
 1. **Database and login** (for example Postgres), so a team shares one lead pool across devices.
