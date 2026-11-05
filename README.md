@@ -1,150 +1,100 @@
 # Lead Copilot
 
-An AI-assisted lead desk for a real-estate sales team. A salesperson adds an inbound lead, and the app scores it, explains what the customer wants, suggests what to do next, drafts the reply, and schedules the follow-ups. The salesperson can then ask questions about that lead in a chat.
+An AI lead desk for real-estate salespeople. Add an inbound lead and the app tells you how hot it is, what the customer wants, what to do next, and what to say. It also plans the follow-ups and drafts the email.
 
 - **Live app:** https://real-estate-salesperson.vercel.app/
+- **Demo video:** <add video link>
 - **Repository:** https://github.com/vikasprajapati-01/lead-copilot
-- **Demo video:** ----------------------------------
 
-To try it with no setup, open the live app and click **Load sample leads** on the dashboard. This adds three leads (one hot, one warm, one cold) so you can see the ranking straight away.
+**Quick try:** open the live app and click **Load sample leads**. You get three leads (hot, warm, cold) ranked on the dashboard. Open one to see the analysis, chat, email draft and follow-up plan.
 
-## What it does
+## The problem and my approach
 
-**Required features**
+A sales team gets hundreds of leads a day. The salesperson needs to know three things fast: which leads matter, what each customer wants, and what to do next.
 
-1. **Lead intake.** A form for name, location, property requirement, budget, buying timeline and the customer's message (an inquiry or a pasted chat).
-2. **AI analysis.** For each lead the model returns a summary, the customer's intent, key requirements, likely objections, a recommended next action and a ready-to-send reply. It also returns a score (1 to 10), a hot/warm/cold tag and one sentence explaining the score.
-3. **Conversational interface.** On each lead page you can ask things like "What should I emphasize on the call?" or "Make my reply more assertive". Every question is answered using that lead's data, so replies are about this customer and not generic advice.
-4. **Lead list and prioritization.** Multiple saved leads, grouped as Hot, Warm and Cold and ranked by score. Each card shows the summary and the next action, so the list can be scanned quickly.
-5. **Clear display.** A score ring, colour-coded priority, a highlighted next action, short bullet lists, and light and dark themes.
+I built the product around one idea: **the AI should do the reading, so the salesperson only has to act.** Each lead is turned into a score, a short summary, a next action and a ready reply. The dashboard shows only what helps a decision.
 
-**My own features (the follow-up workflow after the first reply)**
+I then added features for what happens *after* the first reply. Most deals are lost there, when a follow-up is late or forgotten. That is why I built the follow-up scheduler and the email draft generator.
 
-- **Follow-up scheduler.** Each lead gets a 3 to 4 step plan. The timing depends on priority: hot leads on days 0, 1 and 3, warm on days 0, 2, 5 and 10, and cold on days 0, 7 and 21. Every step names a channel (call, WhatsApp or email), an action, and the message to send, and refers to something specific in that lead. Steps can be ticked off, and the dashboard has a **Follow-ups due** strip showing what is due today or overdue. The plan can be exported as an `.ics` file for Google Calendar or Outlook.
-- **Email draft generator.** Pick a purpose (first reply, follow-up with no response, or site-visit invite) and a tone (friendly, professional, assertive). The app writes an email with a subject line, which you can edit, regenerate, copy, or open in your mail app.
+## Features
 
-**Why these features.** Most deals are lost after the first reply, when a follow-up is late or forgotten. Scoring helps the salesperson decide whom to call first, but they also need to know when to follow up and what to say. These two features cover that part of the day.
+**Core**
+- **Lead intake:** name, location, requirement, budget, timeline, and the customer's message.
+- **AI analysis:** summary, intent, key requirements, objections, next action, suggested reply, a 1 to 10 score, a hot/warm/cold tag and the reason for the score.
+- **Chat per lead:** ask "What should I emphasize on the call?" or "Make my reply more assertive". Answers use only that lead's data.
+- **Lead list:** leads grouped as Hot, Warm and Cold, ranked by score. Delete one lead, or clear all.
+
+**My own features**
+- **Follow-up scheduler:** a 3 to 4 step plan for each lead, timed by priority (hot leads are chased on days 0, 1 and 3; cold leads on days 0, 7 and 21). Each step has a channel, an action and the message to send. Tick steps off, see what is due today on the dashboard, and export the plan to Google Calendar or Outlook as an `.ics` file.
+- **Email draft generator:** choose a purpose (first reply, follow-up, site visit) and a tone (friendly, professional, assertive). You get an editable email with a subject, ready to copy or open in your mail app.
 
 ## How it works
 
 ```
-Browser (Next.js pages)                      Server (Next.js route handlers)           Google
------------------------                      -------------------------------           ------
-New lead form  ── POST /api/analyze ───────► build prompt + JSON schema ─────────────► Gemini
-                                             validate and clean the JSON  ◄──────────
-Lead page chat ── POST /api/chat ──────────► lead data as system prompt + history ───► Gemini
-Email draft    ── POST /api/draft ─────────► goal + tone + lead data ─────────────────► Gemini
+Browser (Next.js)              Server (Next.js API routes)          Google
+-----------------              ---------------------------          ------
+New lead  ── /api/analyze ───► prompt + JSON schema, clean output ─► Gemini
+Chat      ── /api/chat ──────► lead data as system prompt ─────────► Gemini
+Email     ── /api/draft ─────► lead data + purpose + tone ─────────► Gemini
 
-Leads, follow-ups, chats and drafts are saved in the browser (localStorage) through lib/store.ts
+Leads are saved in the browser (localStorage) through lib/store.ts
 ```
 
-The API routes are stateless. The browser sends the lead data on each request and saves the result.
-
-### Project structure
-
 ```
-app/
-  page.tsx                  Dashboard: due follow-ups, leads grouped by priority, sample leads
-  leads/new/page.tsx        Lead intake form
-  leads/[id]/page.tsx       Lead detail: analysis, reply, email, follow-ups, chat
-  api/analyze/route.ts      Lead analysis
-  api/chat/route.ts         Grounded chat about one lead
-  api/draft/route.ts        Email draft
-components/                 EmailDraft, ScoreRing, ThemeToggle, AppHeader, icons, shared styles
-lib/
-  gemini.ts                 Gemini client with timeout, retry and model fallback
-  prompts.ts                All prompts, including the scoring rubric and follow-up rules
-  store.ts                  Storage (localStorage). The only file that touches storage
-  ics.ts                    Due-date logic and calendar export
-  types.ts                  Shared types
+app/               pages (dashboard, new lead, lead detail) and the 3 API routes
+components/        EmailDraft, ScoreRing, header, theme toggle, icons
+lib/gemini.ts      Gemini client: timeout, retry, model fallback
+lib/prompts.ts     all prompts, including the scoring rubric
+lib/store.ts       storage (the only file that touches localStorage)
+lib/ics.ts         due dates and calendar export
+lib/rateLimit.ts   per-IP request limit
 ```
 
-## AI model and how it is called
+## AI model
 
-- **Provider:** Google Gemini API, free tier, through the official `@google/genai` SDK.
-- **Model:** set by the `GEMINI_MODEL` environment variable (default `gemini-flash-latest`). Models that fail are replaced by the ones in `GEMINI_FALLBACK_MODELS`.
-- **API key:** read only on the server. It is never sent to the browser.
+- **Gemini** (Google AI, free tier) through the official `@google/genai` SDK, called only from the server.
+- The model name is an environment variable, with fallback models, so it can be changed without touching code.
+- **Analysis** returns JSON in a fixed shape (temperature 0.3, for consistent scores). **Chat** and **email** use temperature 0.6, for natural writing.
 
-How each call works:
+## Key decisions and why
 
-| Call | Input | Output | Temperature |
-|---|---|---|---|
-| Analysis | Lead form fields and message | JSON object, enforced with a response schema | 0.3 |
-| Chat | Lead data in the system prompt, plus the chat history and the new question | Plain text | 0.6 |
-| Email draft | Lead data and analysis, plus the chosen purpose and tone | JSON with `subject` and `body` | 0.6 |
+- **The scoring rules are written in the prompt.** Hot, warm and cold are defined by how clear the budget is, how specific the requirement is and how soon the customer wants to buy. The model must also explain each score in one sentence, so the salesperson can trust it.
+- **The AI output is checked before it is used.** The API enforces a JSON schema, and the server then cleans the result: the score is kept between 1 and 10, the tag and channel must be valid values, and missing fields get safe defaults. One odd response cannot break the page.
+- **Chat is tied to the lead.** Every question is sent with that lead's data and analysis, and the model is told to say what is missing instead of guessing.
+- **The AI client is built for a busy free tier.** Gemini returned "high demand" errors while I was building, so each call has a 20-second timeout, one retry, and a switch to a fallback model. Users see a clear message instead of a spinner.
+- **Leads are stored in the browser.** The app runs on Vercel serverless functions, where server memory can reset between requests. The API routes stay stateless and the browser keeps the data. All storage code sits in one file, so a database can replace it easily.
+- **Follow-ups are stored as day offsets.** Due dates are calculated from them, which drives both the "due today" list and the calendar file.
+- **A basic rate limit protects the public link.** Each IP gets 30 AI requests per 10 minutes, and messages are capped at 4,000 characters.
 
-Analysis uses a low temperature so scores are more consistent. Chat and email use a higher one so the writing sounds natural.
+## Run locally
 
-## Key technical decisions
-
-**The scoring rubric is in the prompt.** The prompt defines what hot (8 to 10), warm (5 to 7) and cold (1 to 4) mean: how clear the budget is, how specific the requirement is, and how soon the customer wants to buy. The model also has to give a one-sentence reason for the score, so the salesperson can see why a lead ranks where it does.
-
-**The model's output is checked, not trusted.** Analysis uses Gemini's structured output with a response schema, so the reply is JSON with fixed fields. The server then runs it through a `clean()` function that clamps the score to 1 to 10, falls back to a score-based tag if the tag is invalid, restricts channels to the three allowed values, and replaces missing fields with empty values. This stops one bad response from breaking the page.
-
-**Chat is grounded in the lead.** Every chat request puts that lead's data and analysis into the system prompt and tells the model to say what is missing instead of guessing. The model never answers from a general-purpose prompt.
-
-**The free tier can be overloaded, so the AI client handles it.** During development Gemini returned `503 high demand` errors. `lib/gemini.ts` now:
-- gives each request a 20-second timeout, so the page never hangs;
-- retries each model once;
-- moves to the next model in the fallback list on a 404 or 429, or after retries fail;
-- stops straight away on 400, 401 and 403, because those are our own errors and retrying cannot help;
-- returns a clear "service is busy" message to the user.
-
-**Browser storage instead of server memory.** The brief allows in-memory storage or a database. The app is deployed on Vercel, where each request can run in a different short-lived serverless instance, so memory kept on the server can disappear between requests. Leads are therefore saved in the browser's `localStorage`, and the API routes stay stateless. All storage code is in `lib/store.ts`, so moving to a database means changing one file.
-
-**Follow-ups are saved as real dates.** Each follow-up stores a day offset from when the lead was created. The due date is worked out from that, which is how the dashboard finds what is due today and how the `.ics` file gets its dates.
-
-## Run it locally
-
-Requirements: Node.js 20 or newer and a free Gemini API key from https://aistudio.google.com.
+You need Node.js 20+ and a free Gemini API key from [Google AI Studio](https://aistudio.google.com).
 
 ```bash
 git clone https://github.com/vikasprajapati-01/lead-copilot.git
 cd lead-copilot
 npm install
-cp .env.example .env.local     # then add your key
+cp .env.example .env.local    # add your key
 npm run dev
 ```
 
 Open http://localhost:3000.
 
-Environment variables (see `.env.example`):
-
 | Variable | Purpose |
 |---|---|
-| `GEMINI_API_KEY` | Your Gemini API key (required) |
-| `GEMINI_MODEL` | Main model name |
-| `GEMINI_FALLBACK_MODELS` | Comma-separated models to try if the main one is busy or unavailable |
+| `GEMINI_API_KEY` | Your Gemini API key |
+| `GEMINI_MODEL` | Main model |
+| `GEMINI_FALLBACK_MODELS` | Comma-separated backup models |
 
-Model names change over time. If you get a model error, check the current names in Google AI Studio and update these variables. No code change is needed.
-
-## Deployment
-
-The app is deployed on Vercel (free plan). Set the three environment variables above in the project settings, then deploy.
-
-## Known limitations
-
-- **Leads are stored per browser.** They don't sync between devices or people, and clearing site data removes them. A team product would need a database, such as Postgres, with a leads table and a follow-ups table.
-- **Leads are entered by hand.** In a real deployment, leads would arrive from WhatsApp, email and web forms through webhooks and be created automatically.
-- **No login and no rate limiting.** The public URL uses my free-tier API key. Messages are capped at 4,000 characters, but a production version would need authentication and per-user limits.
-- **Follow-ups are reminders, not notifications.** The app shows what is due when you open it, and exports a calendar file. It does not send push notifications, emails or WhatsApp messages by itself.
-- **Calendar events are set to 10:00 local time** on the due date. The time is not chosen from the customer's availability.
-- **Scores come from a language model.** The rubric makes them reasonably consistent, but the same lead can score a point higher or lower on a re-run. A real deployment would check the scores against actual deal outcomes.
-- **Email drafts have no recipient.** The intake form doesn't collect an email address, so "Open in mail app" opens a blank To field. Drafts end with a `[Your name]` placeholder.
-- **Long chats are not shortened.** The full chat history is sent each time. This is fine for a demo, but very long conversations would need trimming or summarizing.
-- **Free-tier availability.** If Gemini is overloaded for longer than the retries and fallbacks cover, the user sees a "service is busy" message and can retry.
+Deployed on Vercel (free plan) with the same three variables.
 
 ## What I would build next
 
-1. A database and login, so a team can share one lead pool.
-2. Lead intake through WhatsApp and email webhooks.
-3. Real notifications for due follow-ups.
-4. Tracking deal outcomes, so the scoring rubric can be tuned against what actually closed.
+1. **Database and login** (for example Postgres), so a team shares one lead pool across devices.
+2. **Automatic lead intake** from WhatsApp, email and web forms through webhooks.
+3. **Real reminders** by push, email or WhatsApp, with the best contact time chosen from the customer's availability.
+4. **Outcome tracking**, so the scoring rubric can be tuned against the deals that actually closed.
+5. **Email address on the lead**, so "Open in mail app" fills the recipient.
+6. **A shared rate limiter** (for example Redis) to protect the API across all server instances.
 
-## Tech stack
-
-Next.js 16 (App Router, route handlers), React 19, TypeScript, Tailwind CSS 4, `@google/genai`.
-
-## AI tools used
-
-See the AI usage disclosure submitted with this project. The AI model inside the product is Gemini; the AI tools used to build it are listed there.
+**Built with:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, Gemini API.
