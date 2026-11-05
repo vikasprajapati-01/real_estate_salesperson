@@ -21,6 +21,7 @@ import {
   SpinnerIcon,
   WalletIcon,
 } from "@/components/icons";
+import EmailDraft from "@/components/EmailDraft";
 import ScoreRing from "@/components/ScoreRing";
 import { PRIORITY_STYLE } from "@/components/priority";
 import { btnPrimary, btnSecondary, card, inputClass } from "@/components/ui";
@@ -255,6 +256,8 @@ function LeadDetail() {
           {a.suggestedResponse}
         </p>
       </section>
+
+      <EmailDraft lead={lead} onChange={update} />
 
       <section className={`${card} flex flex-col gap-4 p-5 sm:p-6`}>
         <div className="flex items-center justify-between gap-3">

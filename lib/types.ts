@@ -43,4 +43,10 @@ export interface Lead {
   analysis: Analysis;
   followUps: FollowUp[];
   chat: ChatMessage[];
+  emailDraft?: EmailDraft;
+}
+
+export interface EmailDraft {
+  subject: string;
+  body: string;
 }

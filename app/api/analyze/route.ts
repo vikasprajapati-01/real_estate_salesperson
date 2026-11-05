@@ -38,6 +38,9 @@ export async function POST(req: Request) {
   if (!input?.name || !input?.message) {
     return NextResponse.json({ error: "Name and message are required" }, { status: 400 });
   }
+  if (String(input.message).length > 4000) {
+    return NextResponse.json({ error: "Message is too long (max 4000 characters)" }, { status: 400 });
+  }
   try {
     const res = await generate({
       contents: buildLeadText(input),

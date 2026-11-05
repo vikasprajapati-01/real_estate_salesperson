@@ -54,3 +54,23 @@ Be short and practical. When asked to rewrite a message, return only the rewritt
 LEAD DATA:
 ${leadJson}
 `;
+
+export const DRAFT_SYSTEM_PROMPT = `
+You write one email from a real-estate salesperson to a customer, using ONLY the lead data given.
+Never invent listings, project names, prices, offers or dates. If a detail is missing, ask the customer for it.
+Subject: under 8 words, specific to this customer.
+Body: 80 to 130 words, short paragraphs, exactly one clear call to action. Greet the customer by first name.
+Write in the same language and style as the customer's message (English or Hinglish).
+End the body with "Regards," on its own line, then "[Your name]" on the next line.
+Return JSON with keys "subject" and "body".
+`;
+
+export function buildDraftText(lead: { input: LeadInput; analysis: unknown }, goal: string, tone: string) {
+  return `Goal of this email: ${goal}
+Tone: ${tone}
+
+${buildLeadText(lead.input)}
+
+AI analysis of this lead:
+${JSON.stringify(lead.analysis)}`;
+}
