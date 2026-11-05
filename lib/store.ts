@@ -24,3 +24,7 @@ export function saveLead(lead: Lead) {
 export function deleteLead(id: string) {
   localStorage.setItem(KEY, JSON.stringify(getLeads().filter((l) => l.id !== id)));
 }
+
+export function clearLeads() {
+  localStorage.setItem(KEY, "[]");
+}

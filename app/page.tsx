@@ -7,7 +7,7 @@ import ScoreRing from "@/components/ScoreRing";
 import { PRIORITY_STYLE } from "@/components/priority";
 import { btnPrimary, btnSecondary, card } from "@/components/ui";
 import { dueDate } from "@/lib/ics";
-import { getLeads, saveLead } from "@/lib/store";
+import { clearLeads, getLeads, saveLead } from "@/lib/store";
 import type { Analysis, Lead, LeadInput, Priority } from "@/lib/types";
 
 const SAMPLES: LeadInput[] = [
@@ -118,6 +118,12 @@ export default function HomePage() {
     }
   }
 
+  function clearAll() {
+    if (!window.confirm(`Delete all ${leads.length} leads? This cannot be undone.`)) return;
+    clearLeads();
+    setLeads([]);
+  }
+
   const ready = now !== null;
   const due = now === null ? [] : dueFollowUps(leads, now);
   const startOfToday = now === null ? 0 : new Date(now).setHours(0, 0, 0, 0);
@@ -134,11 +140,23 @@ export default function HomePage() {
           <h1 className="text-3xl font-semibold tracking-tight">Leads</h1>
           <p className="mt-1 text-sm text-muted">{subtitle}</p>
         </div>
-        <button type="button" onClick={loadSamples} disabled={loading} className={btnSecondary}>
-          {loading ? <SpinnerIcon className="size-4 motion-safe:animate-spin" /> : null}
-          {progress ?? "Load sample leads"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {leads.length > 0 && !loading ? (
+            <button type="button" onClick={clearAll} className={`${btnSecondary} text-hot`}>
+              Clear all
+            </button>
+          ) : null}
+          <button type="button" onClick={loadSamples} disabled={loading} className={btnSecondary}>
+            {loading ? <SpinnerIcon className="size-4 motion-safe:animate-spin" /> : null}
+            {progress ?? "Load sample leads"}
+          </button>
+        </div>
       </header>
+      {loading ? (
+        <p role="status" className="text-sm text-muted">
+          This can take a few seconds per lead, and up to a minute if the AI service is busy. Please keep this page open.
+        </p>
+      ) : null}
 
       {error ? (
         <p role="alert" className="flex items-start gap-2 rounded-lg border border-hot/30 bg-hot-soft px-3 py-2.5 text-sm text-hot">

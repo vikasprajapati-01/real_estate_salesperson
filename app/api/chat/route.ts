@@ -1,10 +1,13 @@
 import { NextResponse } from "next/server";
 import { generate } from "@/lib/gemini";
 import { CHAT_SYSTEM_PROMPT } from "@/lib/prompts";
+import { limited } from "@/lib/rateLimit";
 
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
+  const blocked = limited(req);
+  if (blocked) return blocked;
   const { lead, history, message } = await req.json();
   if (!lead || !message) {
     return NextResponse.json({ error: "Missing lead or message" }, { status: 400 });

@@ -2,6 +2,7 @@ import { Type } from "@google/genai";
 import { NextResponse } from "next/server";
 import { generate } from "@/lib/gemini";
 import { DRAFT_SYSTEM_PROMPT, buildDraftText } from "@/lib/prompts";
+import { limited } from "@/lib/rateLimit";
 
 export const maxDuration = 60;
 
@@ -18,6 +19,8 @@ const TONES: Record<string, string> = {
 };
 
 export async function POST(req: Request) {
+  const blocked = limited(req);
+  if (blocked) return blocked;
   const { lead, goal, tone } = await req.json();
   if (!lead?.input || !lead?.analysis || !GOALS[goal] || !TONES[tone]) {
     return NextResponse.json({ error: "Missing lead, goal or tone" }, { status: 400 });

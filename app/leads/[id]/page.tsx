@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { FormEvent, Suspense, useEffect, useRef, useState } from "react";
 import {
   AlertIcon,
@@ -26,7 +26,7 @@ import ScoreRing from "@/components/ScoreRing";
 import { PRIORITY_STYLE } from "@/components/priority";
 import { btnPrimary, btnSecondary, card, inputClass } from "@/components/ui";
 import { downloadIcs, dueDate } from "@/lib/ics";
-import { getLead, saveLead } from "@/lib/store";
+import { getLead, saveLead, deleteLead } from "@/lib/store";
 import type { Lead } from "@/lib/types";
 
 const CHANNEL = {
@@ -46,6 +46,7 @@ const CHIPS = [
 function LeadDetail() {
   const { id } = useParams<{ id: string }>();
   const [lead, setLead] = useState<Lead | null | undefined>(undefined);
+    const router = useRouter();
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
@@ -93,6 +94,12 @@ function LeadDetail() {
   function update(next: Lead) {
     setLead(next);
     saveLead(next);
+  }
+
+    function remove() {
+    if (!window.confirm(`Delete ${lead!.input.name}? This cannot be undone.`)) return;
+    deleteLead(lead!.id);
+    router.push("/");
   }
 
   function toggle(followUpId: string) {
@@ -149,10 +156,15 @@ function LeadDetail() {
 
   return (
     <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-5 px-4 py-8 sm:px-6 sm:py-10">
-      <Link href="/" className="inline-flex items-center gap-1 self-start text-sm font-medium text-muted hover:text-ink">
-        <ChevronLeftIcon className="size-4" />
-        All leads
-      </Link>
+      <div className="flex items-center justify-between gap-3">
+        <Link href="/" className="inline-flex items-center gap-1 text-sm font-medium text-muted hover:text-ink">
+          <ChevronLeftIcon className="size-4" />
+          All leads
+        </Link>
+        <button type="button" onClick={remove} className={`${btnSecondary} h-8 px-3 text-xs text-hot`}>
+          Delete lead
+        </button>
+      </div>
 
       <section className={`${card} p-5 sm:p-6`}>
         <div className="flex flex-col-reverse gap-5 sm:flex-row sm:items-start sm:justify-between">

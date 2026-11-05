@@ -3,6 +3,7 @@ import { NextResponse } from "next/server";
 import { generate } from "@/lib/gemini";
 import { ANALYSIS_SYSTEM_PROMPT, buildLeadText } from "@/lib/prompts";
 import type { Analysis, Priority } from "@/lib/types";
+import { limited } from "@/lib/rateLimit";
 
 export const maxDuration = 60;
 
@@ -34,6 +35,8 @@ function clean(raw: any): Analysis {
 }
 
 export async function POST(req: Request) {
+  const blocked = limited(req);
+  if (blocked) return blocked;
   const input = await req.json();
   if (!input?.name || !input?.message) {
     return NextResponse.json({ error: "Name and message are required" }, { status: 400 });
