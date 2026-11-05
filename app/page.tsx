@@ -1,69 +1,260 @@
-import Image from "next/image";
+"use client";
 
-export default function Home() {
+import Link from "next/link";
+import { useEffect, useState } from "react";
+import { ChevronRightIcon, BellIcon, InboxIcon, MapPinIcon, PlusIcon, SpinnerIcon, WalletIcon, AlertIcon } from "@/components/icons";
+import ScoreRing from "@/components/ScoreRing";
+import { PRIORITY_STYLE } from "@/components/priority";
+import { btnPrimary, btnSecondary, card } from "@/components/ui";
+import { dueDate } from "@/lib/ics";
+import { getLeads, saveLead } from "@/lib/store";
+import type { Analysis, Lead, LeadInput, Priority } from "@/lib/types";
+
+const SAMPLES: LeadInput[] = [
+  {
+    name: "Asha Mehta",
+    location: "Hinjewadi, Pune",
+    requirement: "2 BHK for a family",
+    budget: "80 lakh",
+    timeline: "Within 2 months",
+    message:
+      "Looking for a 2 BHK near Hinjewadi for my family. Budget is about 80 lakh. We can visit this weekend if you have ready options.",
+  },
+  {
+    name: "Rahul Deshmukh",
+    location: "Baner, Pune",
+    requirement: "3 BHK",
+    budget: "1.2 crore",
+    timeline: "4 to 5 months",
+    message:
+      "We are comparing 3 BHK options in Baner. Budget is around 1.2 crore. Not in a rush, maybe 4 to 5 months. Please send a few listings.",
+  },
+  {
+    name: "Kiran Shah",
+    location: "Pune",
+    requirement: "Not sure",
+    budget: "",
+    timeline: "",
+    message: "Hi, just browsing flats in Pune. Not sure about budget or when I would buy.",
+  },
+];
+
+const PRIORITY_ORDER: Priority[] = ["hot", "warm", "cold"];
+
+function dueFollowUps(leads: Lead[], now: number) {
+  const cutoff = new Date(now);
+  cutoff.setHours(23, 59, 59, 999);
+  return leads
+    .flatMap((lead) =>
+      lead.followUps
+        .filter((followUp) => !followUp.done && dueDate(lead, followUp.dayOffset).getTime() <= cutoff.getTime())
+        .map((followUp) => ({
+          key: `${lead.id}-${followUp.id}`,
+          leadId: lead.id,
+          name: lead.input.name,
+          action: followUp.action,
+          due: dueDate(lead, followUp.dayOffset),
+        })),
+    )
+    .sort((a, b) => a.due.getTime() - b.due.getTime());
+}
+
+async function analyze(input: LeadInput): Promise<Analysis> {
+  const res = await fetch("/api/analyze", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  const data = (await res.json()) as { analysis?: Analysis; error?: string };
+  if (!res.ok || !data.analysis) {
+    throw new Error(data.error || "Analysis failed, please retry");
+  }
+  return data.analysis;
+}
+
+function toLead(input: LeadInput, analysis: Analysis): Lead {
+  return {
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+    input,
+    analysis,
+    followUps: analysis.followUps.map((followUp) => ({
+      ...followUp,
+      id: crypto.randomUUID(),
+      done: false,
+    })),
+    chat: [],
+  };
+}
+
+export default function HomePage() {
+  const [leads, setLeads] = useState<Lead[]>([]);
+  const [now, setNow] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLeads(getLeads());
+    setNow(Date.now());
+  }, []);
+
+  async function loadSamples() {
+    setLoading(true);
+    setError(null);
+    try {
+      for (let i = 0; i < SAMPLES.length; i++) {
+        setProgress(`Analyzing ${i + 1} of ${SAMPLES.length}…`);
+        const analysis = await analyze(SAMPLES[i]);
+        saveLead(toLead(SAMPLES[i], analysis));
+        setLeads(getLeads());
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Analysis failed, please retry");
+      setLeads(getLeads());
+    } finally {
+      setLoading(false);
+      setProgress(null);
+    }
+  }
+
+  const ready = now !== null;
+  const due = now === null ? [] : dueFollowUps(leads, now);
+  const startOfToday = now === null ? 0 : new Date(now).setHours(0, 0, 0, 0);
+  const hotCount = leads.filter((lead) => lead.analysis.priority === "hot").length;
+
+  let subtitle = "Follow up on what is due, then work the hottest leads first.";
+  if (ready && leads.length === 0) subtitle = "Add a lead to get a score and a follow-up plan.";
+  else if (ready) subtitle = `${leads.length} ${leads.length === 1 ? "lead" : "leads"} in your pipeline, ${hotCount} marked hot.`;
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+    <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 sm:py-10">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Leads</h1>
+          <p className="mt-1 text-sm text-muted">{subtitle}</p>
+        </div>
+        <button type="button" onClick={loadSamples} disabled={loading} className={btnSecondary}>
+          {loading ? <SpinnerIcon className="size-4 motion-safe:animate-spin" /> : null}
+          {progress ?? "Load sample leads"}
+        </button>
+      </header>
+
+      {error ? (
+        <p role="alert" className="flex items-start gap-2 rounded-lg border border-hot/30 bg-hot-soft px-3 py-2.5 text-sm text-hot">
+          <AlertIcon className="mt-0.5 size-4 shrink-0" />
+          {error}
+        </p>
+      ) : null}
+
+      <section
+        aria-labelledby="due-heading"
+        className={`rounded-xl border p-4 sm:p-5 ${due.length > 0 ? "border-primary/30 bg-primary-soft" : "border-line bg-surface shadow-card"}`}
+      >
+        <div className="flex items-center gap-2">
+          <BellIcon className={`size-4 ${due.length > 0 ? "text-primary-ink" : "text-muted"}`} />
+          <h2 id="due-heading" className={`text-sm font-semibold ${due.length > 0 ? "text-primary-ink" : "text-ink"}`}>
+            Follow-ups due today{due.length > 0 ? ` (${due.length})` : ""}
+          </h2>
+        </div>
+        {due.length === 0 ? (
+          <p className="mt-1.5 text-sm text-muted">Nothing is due. Follow-ups appear here when they come due.</p>
+        ) : (
+          <ul className="mt-3 flex flex-col divide-y divide-primary/15">
+            {due.map((item) => (
+              <li key={item.key} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold">
+                    {item.name}
+                    {item.due.getTime() < startOfToday ? (
+                      <span className="ml-2 rounded-full bg-warm-soft px-2 py-0.5 text-xs font-semibold text-warm">Overdue</span>
+                    ) : null}
+                  </p>
+                  <p className="text-sm text-muted">{item.action}</p>
+                </div>
+                <Link href={`/leads/${item.leadId}`} className="inline-flex items-center gap-1 text-sm font-semibold text-primary-ink hover:underline">
+                  Open lead
+                  <ChevronRightIcon className="size-4" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {!ready ? (
+        <div className="grid gap-3 sm:grid-cols-2" aria-hidden="true">
+          {[0, 1].map((i) => (
+            <div key={i} className="h-40 rounded-xl border border-line bg-surface motion-safe:animate-pulse" />
+          ))}
+        </div>
+      ) : leads.length === 0 ? (
+        <div className={`${card} flex flex-col items-center px-6 py-14 text-center`}>
+          <span className="grid size-12 place-items-center rounded-full bg-primary-soft text-primary-ink">
+            <InboxIcon className="size-6" />
+          </span>
+          <h2 className="mt-4 text-lg font-semibold">No leads yet</h2>
+          <p className="mt-1 max-w-sm text-sm text-muted">
+            Add your first lead to get a score and a follow-up plan, or load three sample leads to see how it works.
           </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-2">
+            <Link href="/leads/new" className={btnPrimary}>
+              <PlusIcon className="size-4" />
+              Add a lead
+            </Link>
+            <button type="button" onClick={loadSamples} disabled={loading} className={btnSecondary}>
+              Load sample leads
+            </button>
+          </div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+      ) : (
+        PRIORITY_ORDER.map((priority) => {
+          const group = leads.filter((lead) => lead.analysis.priority === priority);
+          if (group.length === 0) return null;
+          const style = PRIORITY_STYLE[priority];
+          return (
+            <section key={priority} className="flex flex-col gap-3">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <span className={`size-2.5 rounded-full ${style.dot}`} />
+                {style.label}
+                <span className="font-normal text-muted">{group.length}</span>
+              </h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {group.map((lead) => (
+                  <Link
+                    key={lead.id}
+                    href={`/leads/${lead.id}`}
+                    className={`${card} group flex flex-col gap-3 p-4 transition-colors hover:border-primary`}
+                  >
+                    <div className="flex items-start gap-3">
+                      <ScoreRing score={lead.analysis.score} priority={priority} size={44} compact />
+                      <div className="min-w-0 flex-1">
+                        <h3 className="truncate text-base font-semibold">{lead.input.name}</h3>
+                        <p className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
+                          <span className="inline-flex min-w-0 items-center gap-1">
+                            <MapPinIcon className="size-3.5 shrink-0" />
+                            <span className="truncate">{lead.input.location || "No location"}</span>
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <WalletIcon className="size-3.5 shrink-0" />
+                            {lead.input.budget || "No budget"}
+                          </span>
+                        </p>
+                      </div>
+                      <ChevronRightIcon className="mt-1 size-4 shrink-0 text-muted group-hover:text-primary-ink" />
+                    </div>
+                    <p className="line-clamp-2 text-sm">{lead.analysis.summary}</p>
+                    <p className="mt-auto line-clamp-2 rounded-lg bg-sunken px-3 py-2 text-sm text-muted">
+                      <span className="font-semibold text-ink">Next: </span>
+                      {lead.analysis.nextAction}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          );
+        })
+      )}
+    </main>
   );
 }

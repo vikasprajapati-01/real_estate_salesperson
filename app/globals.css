@@ -1,26 +1,129 @@
 @import "tailwindcss";
 
+/* Dark mode is controlled by a `dark` class on <html> (set by the toggle and by the
+   inline script in layout.tsx), not only by the OS setting. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light theme */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --canvas: #f4f8fa;
+  --surface: #ffffff;
+  --sunken: #eaf1f5;
+  --line: #d6e1e8;
+  --line-strong: #b9c9d4;
+  --ink: #0e1a23;
+  --muted: #526577;
+
+  --primary: #0b7d99;
+  --primary-hover: #09708a;
+  --primary-fg: #ffffff;
+  --primary-ink: #0a6a83;
+  --primary-soft: #e0f3f8;
+
+  --hot: #b4233a;
+  --hot-soft: #fde8ea;
+  --warm: #8f5200;
+  --warm-soft: #fdf1d8;
+  --cold: #4348b8;
+  --cold-soft: #e8eaff;
+
+  --card-shadow: 0 1px 2px rgb(14 26 35 / 0.05), 0 1px 1px rgb(14 26 35 / 0.03);
+}
+
+/* Dark theme */
+.dark {
+  color-scheme: dark;
+  --canvas: #0a1117;
+  --surface: #111a22;
+  --sunken: #0d151b;
+  --line: #233341;
+  --line-strong: #35495a;
+  --ink: #e8f0f5;
+  --muted: #93a7b6;
+
+  --primary: #22d3ee;
+  --primary-hover: #67e8f9;
+  --primary-fg: #04252d;
+  --primary-ink: #5fdcf2;
+  --primary-soft: #0f2b34;
+
+  --hot: #ff8f9a;
+  --hot-soft: #3a1219;
+  --warm: #fbbf4a;
+  --warm-soft: #34260a;
+  --cold: #a8b0ff;
+  --cold-soft: #1d2147;
+
+  --card-shadow: none;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-fg: var(--primary-fg);
+  --color-primary-ink: var(--primary-ink);
+  --color-primary-soft: var(--primary-soft);
+  --color-hot: var(--hot);
+  --color-hot-soft: var(--hot-soft);
+  --color-warm: var(--warm);
+  --color-warm-soft: var(--warm-soft);
+  --color-cold: var(--cold);
+  --color-cold-soft: var(--cold-soft);
+  --shadow-card: var(--card-shadow);
+  --font-sans: var(--font-figtree);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--primary) 30%, transparent);
+}
+
+/* "Thinking" dots in the chat. Static when reduced motion is requested. */
+.typing-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: var(--muted);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .typing-dot {
+    animation: typing 1.2s infinite ease-in-out;
+  }
+  .typing-dot:nth-child(2) {
+    animation-delay: 0.15s;
+  }
+  .typing-dot:nth-child(3) {
+    animation-delay: 0.3s;
+  }
+}
+@keyframes typing {
+  0%,
+  60%,
+  100% {
+    opacity: 0.3;
+    transform: translateY(0);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
 }
